@@ -5,9 +5,6 @@
 #include <cppitertools/itertools.hpp>
 #include <glm/gtc/matrix_inverse.hpp>
 
-// From https://github.com/AirGuanZ/imgui-filebrowser
-#include "imfilebrowser.h"
-
 void OpenGLWindow::handleEvent(SDL_Event& event) {
   glm::ivec2 mousePosition;
   SDL_GetMouseState(&mousePosition.x, &mousePosition.y);
@@ -99,6 +96,13 @@ void OpenGLWindow::paintGL() {
   glm::mat3 normalMatrix{glm::inverseTranspose(modelViewMatrix)};
   abcg::glUniformMatrix3fv(normalMatrixLoc, 1, GL_FALSE, &normalMatrix[0][0]);
 
+  // Perspective camera
+  const auto aspect{static_cast<float>(m_viewportWidth) /
+                    static_cast<float>(m_viewportHeight)};
+  m_projMatrix =
+      glm::perspective(glm::radians(45.0f), aspect, 0.1f, 5.0f);
+
+
   m_model.render(m_trianglesToDraw);
 
   abcg::glUseProgram(0);
@@ -154,34 +158,6 @@ void OpenGLWindow::paintUI() {
       }
     }
 
-    // Projection combo box
-    {
-      static std::size_t currentIndex{};
-      std::vector<std::string> comboItems{"Perspective", "Orthographic"};
-
-      ImGui::PushItemWidth(120);
-      if (ImGui::BeginCombo("Projection",
-                            comboItems.at(currentIndex).c_str())) {
-        for (auto index : iter::range(comboItems.size())) {
-          const bool isSelected{currentIndex == index};
-          if (ImGui::Selectable(comboItems.at(index).c_str(), isSelected))
-            currentIndex = index;
-          if (isSelected) ImGui::SetItemDefaultFocus();
-        }
-        ImGui::EndCombo();
-      }
-      ImGui::PopItemWidth();
-
-      if (currentIndex == 0) {
-        const auto aspect{static_cast<float>(m_viewportWidth) /
-                          static_cast<float>(m_viewportHeight)};
-        m_projMatrix =
-            glm::perspective(glm::radians(45.0f), aspect, 0.1f, 5.0f);
-
-      } else {
-        m_projMatrix = glm::ortho(-1.0f, 1.0f, -1.0f, 1.0f, 0.1f, 5.0f);
-      }
-    }
 
     ImGui::End();
   }
