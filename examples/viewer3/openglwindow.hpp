@@ -30,10 +30,8 @@ class OpenGLWindow : public abcg::OpenGLWindow {
   glm::mat4 m_projMatrix{1.0f};
 
   // Shaders
-  std::vector<const char*> m_shaderNames{"blinnphong", "phong", "gouraud",
-                                         "normal", "depth"};
-  std::vector<GLuint> m_programs;
-  int m_currentProgramIndex{-1};
+  const char* m_shaderName{"gouraud"};
+  GLuint m_program;
 
   // Light and material properties
   glm::vec4 m_lightDir{-1.0f, -1.0f, -1.0f, 0.0f};

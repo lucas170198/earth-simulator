@@ -43,14 +43,13 @@ void OpenGLWindow::initializeGL() {
   abcg::glEnable(GL_DEPTH_TEST);
 
   // Create programs
-  for (const auto& name : m_shaderNames) {
-    const auto program{createProgramFromFile(getAssetsPath() + name + ".vert",
-                                             getAssetsPath() + name + ".frag")};
-    m_programs.push_back(program);
-  }
+  m_program = createProgramFromFile(getAssetsPath() + m_shaderName + ".vert",
+                                    getAssetsPath() + m_shaderName + ".frag");
 
   // Load model
-  m_model.loadObj(getAssetsPath() + "bunny.obj");
+  // TODO: Create constante for object name
+  m_model.loadObj(getAssetsPath() + "Earth.obj");
+  m_model.setupVAO(m_program);
   m_trianglesToDraw = m_model.getNumTriangles();
 }
 
@@ -60,26 +59,24 @@ void OpenGLWindow::paintGL() {
   abcg::glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   abcg::glViewport(0, 0, m_viewportWidth, m_viewportHeight);
 
-  // Use currently selected program
-  const auto program{m_programs.at(m_currentProgramIndex)};
-  abcg::glUseProgram(program);
+  abcg::glUseProgram(m_program);
 
   // Get location of uniform variables
-  const GLint viewMatrixLoc{abcg::glGetUniformLocation(program, "viewMatrix")};
-  const GLint projMatrixLoc{abcg::glGetUniformLocation(program, "projMatrix")};
+  const GLint viewMatrixLoc{abcg::glGetUniformLocation(m_program, "viewMatrix")};
+  const GLint projMatrixLoc{abcg::glGetUniformLocation(m_program, "projMatrix")};
   const GLint modelMatrixLoc{
-      abcg::glGetUniformLocation(program, "modelMatrix")};
+      abcg::glGetUniformLocation(m_program, "modelMatrix")};
   const GLint normalMatrixLoc{
-      abcg::glGetUniformLocation(program, "normalMatrix")};
+      abcg::glGetUniformLocation(m_program, "normalMatrix")};
   const GLint lightDirLoc{
-      abcg::glGetUniformLocation(program, "lightDirWorldSpace")};
-  const GLint shininessLoc{abcg::glGetUniformLocation(program, "shininess")};
-  const GLint IaLoc{abcg::glGetUniformLocation(program, "Ia")};
-  const GLint IdLoc{abcg::glGetUniformLocation(program, "Id")};
-  const GLint IsLoc{abcg::glGetUniformLocation(program, "Is")};
-  const GLint KaLoc{abcg::glGetUniformLocation(program, "Ka")};
-  const GLint KdLoc{abcg::glGetUniformLocation(program, "Kd")};
-  const GLint KsLoc{abcg::glGetUniformLocation(program, "Ks")};
+      abcg::glGetUniformLocation(m_program, "lightDirWorldSpace")};
+  const GLint shininessLoc{abcg::glGetUniformLocation(m_program, "shininess")};
+  const GLint IaLoc{abcg::glGetUniformLocation(m_program, "Ia")};
+  const GLint IdLoc{abcg::glGetUniformLocation(m_program, "Id")};
+  const GLint IsLoc{abcg::glGetUniformLocation(m_program, "Is")};
+  const GLint KaLoc{abcg::glGetUniformLocation(m_program, "Ka")};
+  const GLint KdLoc{abcg::glGetUniformLocation(m_program, "Kd")};
+  const GLint KsLoc{abcg::glGetUniformLocation(m_program, "Ks")};
 
   // Set uniform variables used by every scene object
   abcg::glUniformMatrix4fv(viewMatrixLoc, 1, GL_FALSE, &m_viewMatrix[0][0]);
@@ -109,16 +106,6 @@ void OpenGLWindow::paintGL() {
 
 void OpenGLWindow::paintUI() {
   abcg::OpenGLWindow::paintUI();
-
-  static ImGui::FileBrowser fileDialog;
-  fileDialog.SetTitle("Load 3D Model");
-  fileDialog.SetTypeFilters({".obj"});
-  fileDialog.SetWindowSize(m_viewportWidth * 0.8f, m_viewportHeight * 0.8f);
-
-  // Only in WebGL
-#if defined(__EMSCRIPTEN__)
-  fileDialog.SetPwd(getAssetsPath());
-#endif
 
   // Create a window for the other widgets
   {
@@ -196,38 +183,11 @@ void OpenGLWindow::paintUI() {
       }
     }
 
-    // Shader combo box
-    {
-      static std::size_t currentIndex{};
-
-      ImGui::PushItemWidth(120);
-      if (ImGui::BeginCombo("Shader", m_shaderNames.at(currentIndex))) {
-        for (const auto index : iter::range(m_shaderNames.size())) {
-          const bool isSelected{currentIndex == index};
-          if (ImGui::Selectable(m_shaderNames.at(index), isSelected))
-            currentIndex = index;
-          if (isSelected) ImGui::SetItemDefaultFocus();
-        }
-        ImGui::EndCombo();
-      }
-      ImGui::PopItemWidth();
-
-      // Set up VAO if shader program has changed
-      if (static_cast<int>(currentIndex) != m_currentProgramIndex) {
-        m_currentProgramIndex = currentIndex;
-        m_model.setupVAO(m_programs.at(m_currentProgramIndex));
-      }
-    }
-
-    if (ImGui::Button("Load 3D Model...", ImVec2(-1, -1))) {
-      fileDialog.Open();
-    }
-
     ImGui::End();
   }
 
   // Create window for light sources
-  if (m_currentProgramIndex < 3) {
+  {
     const auto widgetSize{ImVec2(222, 244)};
     ImGui::SetNextWindowPos(ImVec2(m_viewportWidth - widgetSize.x - 5,
                                    m_viewportHeight - widgetSize.y - 5));
@@ -261,16 +221,6 @@ void OpenGLWindow::paintUI() {
 
     ImGui::End();
   }
-
-  fileDialog.Display();
-
-  if (fileDialog.HasSelected()) {
-    // Load model
-    m_model.loadObj(fileDialog.GetSelected().string());
-    m_model.setupVAO(m_programs.at(m_currentProgramIndex));
-    m_trianglesToDraw = m_model.getNumTriangles();
-    fileDialog.ClearSelected();
-  }
 }
 
 void OpenGLWindow::resizeGL(int width, int height) {
@@ -283,9 +233,7 @@ void OpenGLWindow::resizeGL(int width, int height) {
 
 void OpenGLWindow::terminateGL() {
   m_model.terminateGL();
-  for (const auto& program : m_programs) {
-    abcg::glDeleteProgram(program);
-  }
+  abcg::glDeleteProgram(m_program);
 }
 
 void OpenGLWindow::update() {
