@@ -3,7 +3,7 @@
 
 #include "abcg.hpp"
 #include "model.hpp"
-#include "trackball.hpp"
+#include "planet.hpp"
 
 class OpenGLWindow : public abcg::OpenGLWindow {
  protected:
@@ -21,8 +21,7 @@ class OpenGLWindow : public abcg::OpenGLWindow {
   Model m_model;
   int m_trianglesToDraw{};
 
-  TrackBall m_trackBallModel;
-  TrackBall m_trackBallLight;
+  Planet m_earthModelController;
   float m_zoom{};
 
   glm::mat4 m_modelMatrix{1.0f};

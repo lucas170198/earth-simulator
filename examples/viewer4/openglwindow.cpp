@@ -26,9 +26,9 @@ void OpenGLWindow::initializeGL() {
   // Load default model
   loadModel(getAssetsPath() + "world.obj");
 
-  // Initial trackball spin
-  m_trackBallModel.setAxis(glm::normalize(glm::vec3(0, 0.1f, 0)));
-  m_trackBallModel.setVelocity(0.001f);
+  // Initial earth spin
+  m_earthModelController.setAxis(glm::normalize(glm::vec3(0, 0.1f, 0)));
+  m_earthModelController.setVelocity(0.001f);
 }
 
 void OpenGLWindow::loadModel(std::string_view path) {
@@ -166,7 +166,7 @@ void OpenGLWindow::resizeGL(int width, int height) {
   m_viewportWidth = width;
   m_viewportHeight = height;
 
-  m_trackBallModel.resizeViewport(width, height);
+  m_earthModelController.resizeViewport(width, height);
 }
 
 void OpenGLWindow::terminateGL() {
@@ -177,7 +177,7 @@ void OpenGLWindow::terminateGL() {
 }
 
 void OpenGLWindow::update() {
-  m_modelMatrix = m_trackBallModel.getRotation();
+  m_modelMatrix = m_earthModelController.getRotation();
 
   m_viewMatrix =
       glm::lookAt(glm::vec3(0.0f, 0.0f, 2.0f + m_zoom),
