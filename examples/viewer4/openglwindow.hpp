@@ -30,14 +30,13 @@ class OpenGLWindow : public abcg::OpenGLWindow {
   glm::mat4 m_projMatrix{1.0f};
 
   // Shaders
-  std::vector<const char*> m_shaderNames{"texture", "blinnphong", "phong",
-                                         "gouraud", "normal",     "depth"};
+  const char* m_shaderName{"texture"};
   std::vector<GLuint> m_programs;
   int m_currentProgramIndex{};
 
   // Mapping mode
   // 0: triplanar; 1: cylindrical; 2: spherical; 3: from mesh
-  const int m_mappingMode{3};
+  const int m_mappingMode{2};
 
   // Light and material properties
   glm::vec4 m_lightDir{-1.0f, -1.0f, -1.0f, 0.0f};
@@ -47,7 +46,7 @@ class OpenGLWindow : public abcg::OpenGLWindow {
   glm::vec4 m_Ka;
   glm::vec4 m_Kd;
   glm::vec4 m_Ks;
-  float m_shininess{0.25f};
+  float m_shininess{0};
 
   void loadModel(std::string_view path);
   void update();

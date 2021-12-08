@@ -56,7 +56,7 @@ void TrackBall::resizeViewport(int width, int height) {
 }
 
 glm::mat4 TrackBall::getRotation() {
-  if (m_mouseTracking) return m_rotation;
+  // if (m_mouseTracking) return m_rotation;
 
   // If not tracking, rotate by velocity. This will simulate
   // an inertia-free rotation.

@@ -18,6 +18,7 @@ struct Vertex {
   }
 };
 
+
 class Model {
  public:
   void loadDiffuseTexture(std::string_view path);

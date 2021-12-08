@@ -5,32 +5,9 @@
 #include <cppitertools/itertools.hpp>
 #include <glm/gtc/matrix_inverse.hpp>
 
-#include "imfilebrowser.h"
-
 void OpenGLWindow::handleEvent(SDL_Event& event) {
   glm::ivec2 mousePosition;
   SDL_GetMouseState(&mousePosition.x, &mousePosition.y);
-
-  if (event.type == SDL_MOUSEMOTION) {
-    m_trackBallModel.mouseMove(mousePosition);
-    m_trackBallLight.mouseMove(mousePosition);
-  }
-  if (event.type == SDL_MOUSEBUTTONDOWN) {
-    if (event.button.button == SDL_BUTTON_LEFT) {
-      m_trackBallModel.mousePress(mousePosition);
-    }
-    if (event.button.button == SDL_BUTTON_RIGHT) {
-      m_trackBallLight.mousePress(mousePosition);
-    }
-  }
-  if (event.type == SDL_MOUSEBUTTONUP) {
-    if (event.button.button == SDL_BUTTON_LEFT) {
-      m_trackBallModel.mouseRelease(mousePosition);
-    }
-    if (event.button.button == SDL_BUTTON_RIGHT) {
-      m_trackBallLight.mouseRelease(mousePosition);
-    }
-  }
   if (event.type == SDL_MOUSEWHEEL) {
     m_zoom += (event.wheel.y > 0 ? 1.0f : -1.0f) / 5.0f;
     m_zoom = glm::clamp(m_zoom, -1.5f, 1.0f);
@@ -42,17 +19,16 @@ void OpenGLWindow::initializeGL() {
   abcg::glEnable(GL_DEPTH_TEST);
 
   // Create programs
-  for (const auto& name : m_shaderNames) {
-    const auto path{getAssetsPath() + "shaders/" + name};
-    const auto program{createProgramFromFile(path + ".vert", path + ".frag")};
-    m_programs.push_back(program);
-  }
+  const auto path{getAssetsPath() + "shaders/" + m_shaderName};
+  const auto program{createProgramFromFile(path + ".vert", path + ".frag")};
+  m_programs.push_back(program);
 
   // Load default model
   loadModel(getAssetsPath() + "world.obj");
+
   // Initial trackball spin
-  m_trackBallModel.setAxis(glm::normalize(glm::vec3(1, 1, 1)));
-  m_trackBallModel.setVelocity(0.0001f);
+  m_trackBallModel.setAxis(glm::normalize(glm::vec3(0, 0.1f, 0)));
+  m_trackBallModel.setVelocity(0.001f);
 }
 
 void OpenGLWindow::loadModel(std::string_view path) {
@@ -105,8 +81,7 @@ void OpenGLWindow::paintGL() {
   abcg::glUniform1i(diffuseTexLoc, 0);
   abcg::glUniform1i(mappingModeLoc, m_mappingMode);
 
-  const auto lightDirRotated{m_trackBallLight.getRotation() * m_lightDir};
-  abcg::glUniform4fv(lightDirLoc, 1, &lightDirRotated.x);
+  abcg::glUniform4fv(lightDirLoc, 1, &m_lightDir.x);
   abcg::glUniform4fv(IaLoc, 1, &m_Ia.x);
   abcg::glUniform4fv(IdLoc, 1, &m_Id.x);
   abcg::glUniform4fv(IsLoc, 1, &m_Is.x);
@@ -139,6 +114,52 @@ void OpenGLWindow::paintGL() {
 
 void OpenGLWindow::paintUI() {
   abcg::OpenGLWindow::paintUI();
+
+  {
+    auto widgetSize{ImVec2(300, 80)};
+
+    if (!m_model.isUVMapped()) {
+      // Add extra space for static text
+      widgetSize.y += 26;
+    }
+
+    ImGui::SetNextWindowPos(ImVec2(m_viewportWidth - widgetSize.x - 5, 5));
+    ImGui::SetNextWindowSize(widgetSize);
+    const auto flags{ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDecoration};
+    ImGui::Begin("Widget window", nullptr, flags);
+
+    // combo box estações do ano
+    {
+      static std::size_t currentIndex{};
+      std::vector<std::string> comboItems{"Outono", "Primavera", "Inverno", "Verão"};
+
+
+      ImGui::PushItemWidth(120);
+      if (ImGui::BeginCombo("Estação",
+                            comboItems.at(currentIndex).c_str())) {
+        for (auto index : iter::range(comboItems.size())) {
+          const bool isSelected{currentIndex == index};
+          if (ImGui::Selectable(comboItems.at(index).c_str(), isSelected))
+            currentIndex = index;
+          if (isSelected) ImGui::SetItemDefaultFocus();
+        }
+        ImGui::EndCombo();
+      }
+      ImGui::PopItemWidth();
+
+      // Simula direções da luz do sol para cada estação do ano
+      if (currentIndex == 0) {
+        m_lightDir = {1.48f, 0.12f, 0.88f, 0};
+      } else if(currentIndex == 1){
+        m_lightDir = {1.71f, 0.18f, -0.15f, 0};
+      } else if(currentIndex == 2){
+        m_lightDir = {1.38f, -1.13f, -0.39f, 0};
+      } else{
+        m_lightDir = {1.48f, 0.72f, -0.51f, 0};
+      }
+    }
+    ImGui::End();
+  }
 }
 
 void OpenGLWindow::resizeGL(int width, int height) {
@@ -146,7 +167,6 @@ void OpenGLWindow::resizeGL(int width, int height) {
   m_viewportHeight = height;
 
   m_trackBallModel.resizeViewport(width, height);
-  m_trackBallLight.resizeViewport(width, height);
 }
 
 void OpenGLWindow::terminateGL() {
